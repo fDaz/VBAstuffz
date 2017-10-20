@@ -1,0 +1,417 @@
+VERSION 5.00
+Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} Frame 
+   Caption         =   "Pewpew"
+   ClientHeight    =   12585
+   ClientLeft      =   45
+   ClientTop       =   375
+   ClientWidth     =   12210
+   OleObjectBlob   =   "Frame.frx":0000
+   StartUpPosition =   1  'CenterOwner
+End
+Attribute VB_Name = "Frame"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Private pstats As New Scripting.Dictionary
+Private bColl As New Scripting.Dictionary
+Private zColl As New Scripting.Dictionary
+Private zStat As New Scripting.Dictionary
+Private Pews As New Scripting.Dictionary
+Private player, healthBar As Image
+Private fps, pts, health, speed, shots, zeds  As Integer
+Private firx, firy, spawn, spawnmax, fcyc As Double
+Private upk, downk, rightk, leftk, firing As Boolean
+Private running As Boolean
+
+Private Sub UserForm_Terminate()
+
+End
+
+End Sub
+
+Private Sub Panel_KeyDown(ByVal KeyCode As MSForms.ReturnInteger, ByVal Shift As Integer)
+
+Select Case KeyCode
+    Case 87 'w
+        upk = True
+    Case 65 'a
+        leftk = True
+    Case 83 's
+        downk = True
+    Case 68 'd
+        rightk = True
+End Select
+
+End Sub
+
+Private Sub Panel_KeyUp(ByVal KeyCode As MSForms.ReturnInteger, ByVal Shift As Integer)
+
+Select Case KeyCode
+    Case 87 'w
+        upk = False
+    Case 65 'a
+        leftk = False
+    Case 83 's
+        downk = False
+    Case 68 'd
+        rightk = False
+End Select
+
+End Sub
+
+Private Sub Panel_MouseDown(ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)
+
+firx = X
+firy = Y
+
+firing = True
+
+End Sub
+
+Private Sub Panel_MouseMove(ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)
+
+If Button = 1 Then
+    firx = X
+    firy = Y
+End If
+
+End Sub
+
+Private Sub Panel_MouseUp(ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)
+
+firing = False
+
+End Sub
+
+Sub Init()
+
+running = True
+fps = 0.01
+speed = 2
+pts = 0
+
+shots = 0
+zeds = 0
+
+spawn = 0
+spawnmax = 10
+
+pstats.Add "hp", 100
+pstats.Add "pew", "pistol"
+fcyc = 999
+
+Call InitPews
+
+Set healthBar = Frame.Controls.Add("Forms.Image.1", "HPBar")
+With healthBar
+.Width = pstats("hp")
+.Height = 12
+.top = 6
+.left = 500
+.BackColor = RGB(250, 0, 0)
+End With
+
+Set player = Frame.Panel.Controls.Add("Forms.Image.1", "Pchar")
+With player
+.Width = 10
+.Height = 10
+.top = 300
+.left = 300
+.BackColor = RGB(170, 100, 50)
+End With
+
+Call Main
+
+End Sub
+
+Sub Main()
+
+Do
+
+If upk = True And player.top > 0 Then player.top = player.top - speed
+If leftk = True And player.left > 0 Then player.left = player.left - speed
+If downk = True And player.top < 590 Then player.top = player.top + speed
+If rightk = True And player.left < 590 Then player.left = player.left + speed
+
+If fcyc < Pews(pstats("pew"))("rof") Then
+    fcyc = fcyc + 0.1
+End If
+
+If firing = True Then
+    If fcyc >= Pews(pstats("pew"))("rof") Then
+        fcyc = 0
+        For i = 1 To Pews(pstats("pew"))("proj")
+            Call ShootGun
+        Next
+    End If
+    If Pews(pstats("pew"))("auto") = False Then firing = False
+End If
+
+If zColl.count > 0 Then
+    For Each zkey In zColl.Keys
+        Call MoveZed(zkey)
+    Next
+End If
+
+If bColl.count > 0 Then
+    For Each dkey In bColl.Keys
+        Call MoveBullet(dkey)
+    Next
+End If
+
+If bColl.count > 0 Then
+    For Each dkey In bColl.Keys
+        Call BulletColl(dkey)
+    Next
+End If
+
+Frame.Shts = shots
+healthBar.Width = pstats("hp")
+
+spawn = spawn + 0.1
+
+If spawnmax <= spawn Then
+    spawn = 0
+    Call Spawner
+End If
+
+If pstats("hp") <= 0 Then running = False
+
+Call Wait
+
+Loop While running = True
+
+MsgBox "Game Over!"
+
+End Sub
+
+Sub Spawner()
+
+Randomize
+whatto = zeds - Int((zeds + 1) * Rnd)
+
+Select Case whatto
+    Case 0 To 15
+        Call NewZed(2, 5, 1, 10, 20, 250, 20)
+    Case 16 To 40
+        Call NewZed(4, 5, 2, 10, 20, 200, 20)
+    Case 41 To 100
+        Call NewZed(6, 5, 2, 20, 20, 150, 20)
+    Case Else
+        Call NewZed(6, 5, 2, 20, 20, 150, 20)
+End Select
+
+'spawnmax = spawnmax / 1.01
+
+End Sub
+
+Sub NewZed(zSp, bmax, hp, dam, r, g, b)
+
+Dim zVars As New Scripting.Dictionary
+
+zeds = zeds + 1
+
+zVars.Add "bcount", 0
+zVars.Add "bmax", bmax
+zVars.Add "hp", hp
+zVars.Add "dam", dam
+
+Randomize
+wfrom = Int(4 * Rnd)
+
+Select Case wfrom
+    Case 1 'arrive from up
+        Randomize
+        xPos = Int(621 * Rnd - 10)
+        yPos = -10
+    Case 2 'arrive from down
+        Randomize
+        xPos = Int(621 * Rnd - 10)
+        yPos = 610
+    Case 3 'arrive from left
+        xPos = -10
+        Randomize
+        yPos = Int(621 * Rnd - 10)
+    Case 4 'arrive from right
+        xPos = 610
+        Randomize
+        yPos = Int(621 * Rnd - 10)
+End Select
+
+Set zixl = Panel.Controls.Add("Forms.Image.1", "Zed" & zeds)
+
+With zixl
+.Width = 10
+.Height = 10
+.left = xPos
+.top = yPos
+.BackColor = RGB(r, g, b)
+.Tag = zSp
+.Enabled = False
+End With
+
+zColl.Add zeds, zixl
+zStat.Add zeds, zVars
+
+End Sub
+
+Sub MoveZed(n)
+
+Dim cDir()
+
+cDir = CalcDir(zColl(n).left, zColl(n).top, player.left, player.top)
+
+zStat(n)("bcount") = zStat(n)("bcount") + 0.1
+
+If zColl(n).top >= player.top - 10 And zColl(n).top + 10 <= player.top + 20 And zColl(n).left >= player.left - 10 And zColl(n).left + 10 <= player.left + 20 Then
+    Call ZBit(n)
+    Exit Sub
+Else
+    zColl(n).left = zColl(n).left + (cDir(0) / 4 * zColl(n).Tag)
+    zColl(n).top = zColl(n).top + (cDir(1) / 4 * zColl(n).Tag)
+End If
+
+End Sub
+
+Sub ZBit(n)
+
+If zStat(n)("bcount") >= zStat(n)("bmax") Then
+    zStat(n)("bcount") = 0
+    pstats("hp") = pstats("hp") - zStat(n)("dam")
+End If
+
+End Sub
+
+Sub RemoveZed(n)
+
+Panel.Controls.Remove zColl.Item(n).Name
+zColl.Remove n
+zStat.Remove n
+
+End Sub
+
+Sub ShootGun()
+
+Dim cDir()
+
+Randomize
+spreadx = firx + Int((2 * Pews(pstats("pew"))("spread") + 1) * Rnd - Pews(pstats("pew"))("spread"))
+
+Randomize
+spready = firy + Int((2 * Pews(pstats("pew"))("spread") + 1) * Rnd - Pews(pstats("pew"))("spread"))
+
+cDir = CalcDir(player.left + 5, player.top + 5, spreadx, spready)
+
+shots = shots + 1
+
+Set blt = Panel.Controls.Add("Forms.Image.1", "Boolit" & shots)
+
+With blt
+.Width = Pews(pstats("pew"))("dam") + 1
+.Height = Pews(pstats("pew"))("dam") + 1
+.left = player.left + 5
+.top = player.top + 5
+.BackColor = RGB(0, 0, 0)
+.Tag = cDir(0)
+.ControlTipText = cDir(1)
+End With
+
+bColl.Add shots, blt
+
+End Sub
+
+Sub MoveBullet(n)
+
+bColl(n).left = bColl(n).left + (bColl(n).Tag * 8)
+bColl(n).top = bColl(n).top + (bColl(n).ControlTipText * 8)
+    
+End Sub
+
+Sub BulletColl(n)
+
+If zColl.count > 0 Then
+    For Each zkey In zColl.Keys
+        If zColl(zkey).top < bColl(n).top + bColl(n).Height And zColl(zkey).top + 10 > bColl(n).top And zColl(zkey).left < bColl(n).left + bColl(n).Width And zColl(zkey).left + 10 > bColl(n).left Then
+            zStat(zkey)("hp") = zStat(zkey)("hp") - Pews(pstats("pew"))("dam")
+            Call RemoveBult(n)
+            If zStat(zkey)("hp") <= 0 Then
+                Call RemoveZed(zkey)
+            End If
+            Exit Sub
+        End If
+    Next
+End If
+
+If bColl(n).top > 600 Or bColl(n).top < 0 Or bColl(n).left > 600 Or bColl(n).left < 0 Then
+    Call RemoveBult(n)
+    Exit Sub
+End If
+
+End Sub
+
+Sub RemoveBult(b)
+    Panel.Controls.Remove bColl(b).Name
+    bColl.Remove b
+End Sub
+
+Function CalcDir(x1, y1, x2, y2)
+
+Dim dist, dX, dY, retCoor(1), t, u As Double
+Dim dirX, dirY As Integer
+
+dX = x2 - x1
+dY = y2 - y1
+
+If dX = 0 Then dX = 1E-20
+If dY = 0 Then dY = 1E-20
+
+dirX = dX / Abs(dX)
+dirY = dY / Abs(dY)
+
+dX = Abs(dX)
+dY = Abs(dY)
+
+dist = Sqr(dX ^ 2 + dY ^ 2)
+
+t = ArcCos((dist ^ 2 + dX ^ 2 - dY ^ 2) / (2 * dist * dX))
+
+u = WorksheetFunction.Pi / 2 - t
+
+retCoor(0) = Sin(u) * dirX
+retCoor(1) = Sin(t) * dirY
+
+CalcDir = retCoor
+
+End Function
+
+Sub InitPews()
+
+Dim pewStats As New Scripting.Dictionary
+
+pewStats.Add "dam", 1
+pewStats.Add "spread", 10
+pewStats.Add "proj", 1
+pewStats.Add "auto", True
+pewStats.Add "rof", 0.5
+pewStats.Add "mag", 8
+
+Pews.Add "pistol", pewStats
+
+
+End Sub
+
+Sub Wait()
+
+tStart = Timer
+Do While Timer < tStart + fps
+    DoEvents
+Loop
+
+End Sub
+
+Function ArcCos(X)
+
+ArcCos = Atn(-X / Sqr(-X * X + 1)) + 2 * Atn(1)
+
+End Function
