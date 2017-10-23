@@ -325,7 +325,7 @@ Sub MoveZed(n)
 
 Dim cDir()
 
-cDir = CalcDir(zColl(n).Left, zColl(n).Top, player.Left, player.Top)
+cDir = CalcDir(zColl(n).Left, zColl(n).Top, player.Left, player.Top, 0)
 
 zStat(n)("bcount") = zStat(n)("bcount") + 0.1
 
@@ -362,12 +362,9 @@ Sub ShootGun()
 Dim cDir()
 
 Randomize
-spreadx = firx + Int((2 * Pews(pstats("pew"))("spread") + 1) * Rnd - Pews(pstats("pew"))("spread"))
+spread = Int((2 * Pews(pstats("pew"))("spread") + 1) * Rnd - Pews(pstats("pew"))("spread")) * WorksheetFunction.Pi / 180
 
-Randomize
-spready = firy + Int((2 * Pews(pstats("pew"))("spread") + 1) * Rnd - Pews(pstats("pew"))("spread"))
-
-cDir = CalcDir(player.Left + 5, player.Top + 5, spreadx, spready)
+cDir = CalcDir(player.Left + 5, player.Top + 5, firx, firy, spread)
 
 shots = shots + 1
 
@@ -421,7 +418,7 @@ Sub RemoveBult(b)
     bColl.Remove b
 End Sub
 
-Function CalcDir(x1, y1, x2, y2)
+Function CalcDir(x1, y1, x2, y2, spread)
 
 Dim dist, dX, dY, retCoor(1), t, u As Double
 Dim dirX, dirY As Integer
@@ -445,6 +442,8 @@ Else
     t = ArcCos((dist ^ 2 + dX ^ 2 - dY ^ 2) / (2 * dist * dX))
 End If
 
+t = t + spread
+
 u = WorksheetFunction.Pi / 2 - t
 
 retCoor(0) = Sin(u) * dirX
@@ -463,7 +462,7 @@ Dim pewStats4 As New Scripting.Dictionary
 
 With pewStats1
 .Add "dam", 1
-.Add "spread", 10
+.Add "spread", 4
 .Add "proj", 1
 .Add "auto", False
 .Add "rof", 2
@@ -474,7 +473,7 @@ Pews.Add "pistol", pewStats1
 
 With pewStats2
 .Add "dam", 1
-.Add "spread", 60
+.Add "spread", 15
 .Add "proj", 8
 .Add "auto", False
 .Add "rof", 4
@@ -485,7 +484,7 @@ Pews.Add "shotgun", pewStats2
 
 With pewStats3
 .Add "dam", 1
-.Add "spread", 30
+.Add "spread", 8
 .Add "proj", 1
 .Add "auto", True
 .Add "rof", 0.5
@@ -496,7 +495,7 @@ Pews.Add "smg", pewStats3
 
 With pewStats4
 .Add "dam", 3
-.Add "spread", 5
+.Add "spread", 2
 .Add "proj", 1
 .Add "auto", True
 .Add "rof", 8
