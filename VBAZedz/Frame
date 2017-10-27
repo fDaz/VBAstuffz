@@ -1,29 +1,74 @@
-VERSION 5.00
-Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} Frame 
-   Caption         =   "Pewpew"
-   ClientHeight    =   12585
-   ClientLeft      =   45
-   ClientTop       =   375
-   ClientWidth     =   12210
-   OleObjectBlob   =   "Frame.frx":0000
-   StartUpPosition =   1  'CenterOwner
-End
-Attribute VB_Name = "Frame"
-Attribute VB_GlobalNameSpace = False
-Attribute VB_Creatable = False
-Attribute VB_PredeclaredId = True
-Attribute VB_Exposed = False
 Private pstats As New Scripting.Dictionary
 Private bColl As New Scripting.Dictionary
 Private zColl As New Scripting.Dictionary
+Private iColl As New Scripting.Dictionary
 Private zStat As New Scripting.Dictionary
 Private Pews As New Scripting.Dictionary
-Private player, healthBar As Image
-Private fps, Pts, health, speed, shots, zeds, currAmm, relcount As Integer
-Private firx, firy, spawn, spawnmax, fcyc As Double
-Private upk, downk, rightk, leftk As Integer
-Private firing, reload, switched As Boolean
+Private Pwrs As New Collection
+Private player As Image, healthBar As Image, relBar As Image, relFrame As Image, powBar As Image
+Private Pts As Integer, Health As Integer, speed As Integer, shots As Integer, zeds As Integer, items As Integer, currAmm As Integer, relcount As Integer, wpnchance As Integer, powchance As Integer, powtime As Integer
+Private fps As Double, firx As Double, firy As Double, spawn As Double, spawnmax As Double, fcyc As Double
+Private upk As Integer, downk As Integer, rightk As Integer, leftk As Integer
+Private firing As Boolean, reload As Boolean, switched As Boolean
 Private running As Boolean
+Private Ptstext, Ptslbl, Pewlbl, Ammotext, Ammlbl, HpT, ZC
+
+Sub Construct(inwidth, inheight)
+
+Me.width = inwidth + 15
+Me.height = inheight + 50
+Me.Caption = "Pew"
+
+Me.Show (0)
+
+Frame1.Caption = ""
+Frame1.left = 5
+Frame1.top = 25
+Frame1.width = inwidth
+Frame1.height = inheight
+Frame1.BackColor = RGB(224, 224, 224)
+Frame1.MousePointer = fmMousePointerCross
+
+Set Ptstext = Me.Controls.Add("Forms.Label.1", "Ptstext")
+Ptstext.Caption = "Points:"
+Ptstext.top = 6
+Ptstext.left = 10
+
+Set Ptslbl = Me.Controls.Add("Forms.Label.1", "Ptslbl")
+Ptslbl.Caption = "NA"
+Ptslbl.top = 6
+Ptslbl.left = 42
+Ptslbl.width = 18
+
+Set Pewlbl = Me.Controls.Add("Forms.Label.1", "Pewlbl")
+Pewlbl.Caption = "NA"
+Pewlbl.top = 6
+Pewlbl.left = 72
+
+Set Ammotext = Me.Controls.Add("Forms.Label.1", "Ammotext")
+Ammotext.Caption = "Ammo:"
+Ammotext.top = 6
+Ammotext.left = 115
+
+Set Ammlbl = Me.Controls.Add("Forms.Label.1", "Ammlbl")
+Ammlbl.Caption = "NA"
+Ammlbl.top = 6
+Ammlbl.left = 145
+
+Set HpT = Me.Controls.Add("Forms.Label.1", "HpT")
+HpT.Caption = "Health:"
+HpT.top = 6
+HpT.left = Me.width - 150
+
+Set ZC = Me.Controls.Add("Forms.Label.1", "ZC")
+ZC.Caption = "NA"
+ZC.top = 6
+ZC.left = 300
+ZC.Visible = False
+
+Call Init
+
+End Sub
 
 Private Sub UserForm_Terminate()
 
@@ -31,85 +76,65 @@ End
 
 End Sub
 
-Private Sub Panel_KeyDown(ByVal KeyCode As MSForms.ReturnInteger, ByVal Shift As Integer)
+Private Sub Frame1_KeyDown(ByVal KeyCode As MSForms.ReturnInteger, ByVal Shift As Integer)
 
 Select Case KeyCode
-    Case 87 'w
+    Case vbKeyW
         upk = 1
-    Case 65 'a
+    Case vbKeyA
         leftk = 1
-    Case 83 's
+    Case vbKeyS
         downk = 1
-    Case 68 'd
+    Case vbKeyD
         rightk = 1
-    Case 49 '1
-        If switched = False Then
-            pstats("pew") = "pistol"
-            currAmm = 0
-            relcount = 0
-            switched = True
+    Case vbKeyR
+        If reload = False Then
+            If Pews(pstats("pew"))("fullreload") = True Then
+                currAmm = 0
+            Else
+                reload = True
+            End If
         End If
-    Case 50 '2
-        If switched = False Then
-            pstats("pew") = "shotgun"
-            currAmm = 0
-            relcount = 0
-            switched = True
-        End If
-    Case 51 '3
-        If switched = False Then
-            pstats("pew") = "smg"
-            currAmm = 0
-            relcount = 0
-            switched = True
-        End If
-    Case 52 '4
-        If switched = False Then
-            pstats("pew") = "rifle"
-            currAmm = 0
-            relcount = 0
-            switched = True
-        End If
+    Case vbKeyL
+        ZC.Visible = True
 End Select
 
 End Sub
 
-Private Sub Panel_KeyUp(ByVal KeyCode As MSForms.ReturnInteger, ByVal Shift As Integer)
+Private Sub Frame1_KeyUp(ByVal KeyCode As MSForms.ReturnInteger, ByVal Shift As Integer)
 
 Select Case KeyCode
-    Case 87 'w
+    Case vbKeyW
         upk = 0
-    Case 65 'a
+    Case vbKeyA
         leftk = 0
-    Case 83 's
+    Case vbKeyS
         downk = 0
-    Case 68 'd
+    Case vbKeyD
         rightk = 0
-    Case 49 To 52
-        switched = 0
 End Select
 
 End Sub
 
-Private Sub Panel_MouseDown(ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)
+Private Sub Frame1_MouseDown(ByVal Button As Integer, ByVal Shift As Integer, ByVal x As Single, ByVal y As Single)
 
-firx = X
-firy = Y
+firx = x
+firy = y
 
 firing = True
 
 End Sub
 
-Private Sub Panel_MouseMove(ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)
+Private Sub Frame1_MouseMove(ByVal Button As Integer, ByVal Shift As Integer, ByVal x As Single, ByVal y As Single)
 
 If Button = 1 Then
-    firx = X
-    firy = Y
+    firx = x
+    firy = y
 End If
 
 End Sub
 
-Private Sub Panel_MouseUp(ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)
+Private Sub Frame1_MouseUp(ByVal Button As Integer, ByVal Shift As Integer, ByVal x As Single, ByVal y As Single)
 
 firing = False
 
@@ -125,9 +150,13 @@ currAmm = 0
 relcount = 0
 reload = False
 switched = False
+wpnchance = 2
+powchance = 4
+powtime = 170
 
 shots = 0
 zeds = 0
+items = 0
 
 spawn = 0
 spawnmax = 10
@@ -136,25 +165,73 @@ pstats.Add "hp", 100
 pstats.Add "pew", "pistol"
 fcyc = 999
 
-Call InitPews
+'Syntax: InitPew(name, dam, bsize, spread, proj, pspeed, auto, rof, mag, relspeed, fullreload, piercing)
+Call InitPew("pistol", 1, 2, 1, 1, 10, False, 2, 8, 60, True, False)
+Call InitPew("shotgun", 1, 2, 10, 5, 10, False, 3, 6, 40, False, False)
+Call InitPew("sawnoff", 1, 2, 20, 8, 10, True, 1, 2, 80, True, False)
+Call InitPew("smg", 1, 2, 3, 1, 10, True, 0.5, 52, 100, True, False)
+Call InitPew("carbine", 2, 3, 4, 1, 10, True, 1, 30, 120, True, False)
+Call InitPew("rifle", 1, 3, 0.5, 1, 20, False, 6, 5, 100, True, True)
+Call InitPew("minigun", 1, 2, 8, 1, 10, True, 0.3, 200, 300, True, False)
 
-Set healthBar = Frame.Controls.Add("Forms.Image.1", "HPBar")
+Pwrs.Add "invul"
+Pwrs.Add "supershot"
+Pwrs.Add "freeze"
+Pwrs.Add "berserk"
+
+Set healthBar = Me.Controls.Add("Forms.Image.1", "HPBar")
 With healthBar
-.Width = pstats("hp")
-.Height = 12
-.Top = 6
-.Left = Frame.Width - 110
+.width = pstats("hp")
+.height = 12
+.top = 6
+.left = Me.width - 120
 .BackColor = RGB(250, 0, 0)
 End With
 
-Set player = Frame.Panel.Controls.Add("Forms.Image.1", "Pchar")
+Set relFrame = Me.Controls.Add("Forms.Image.1", "RelFrame")
+With relFrame
+.width = 100
+.height = 6
+.top = 8
+.left = 170
+.BackStyle = 0
+.BorderColor = RGB(0, 0, 0)
+.BorderStyle = 1
+End With
+
+Set relBar = Me.Controls.Add("Forms.Image.1", "RelBar")
+With relBar
+.width = 0
+.height = 6
+.top = 8
+.left = 170
+.BackColor = RGB(200, 200, 200)
+End With
+
+Set powBar = Me.Controls.Add("Forms.Image.1", "powBar")
+With powBar
+.width = 0
+.height = 5
+.top = 20
+.left = 5
+.BackColor = RGB(0, 200, 250)
+.BorderStyle = 0
+End With
+
+Set player = Frame1.Controls.Add("Forms.Image.1", "Pchar")
 With player
-.Width = 10
-.Height = 10
-.Top = Frame.Height / 2
-.Left = Frame.Width / 2
+.width = 10
+.height = 10
+.top = Me.height / 2
+.left = Me.width / 2
 .BackColor = RGB(170, 100, 50)
 End With
+
+Ptslbl.Caption = Pts
+
+For i = 1 To 10
+    Call Spawner
+Next
 
 Call Main
 
@@ -164,63 +241,84 @@ Sub Main()
 
 Do
 
-If currAmm = 0 Then reload = True
+If powBar.width > 0 Then powBar.width = powBar.width - 0.5
 
-If reload = True And currAmm < Pews(pstats("pew"))("mag") Then
+If powBar.width = 1 Then player.BackColor = RGB(170, 100, 50)
+
+If currAmm = 0 Then reload = True
+If currAmm = Pews(pstats("pew"))("mag") Then reload = False
+
+If reload = True Then
     relcount = relcount + 1
-    If relcount = 100 Then
-        reload = False
-        relcount = 0
-        currAmm = Pews(pstats("pew"))("mag")
+    If powBar.width > 0 And powBar.Tag = "berserk" Then relcount = relcount + 9
+    If relcount >= Pews(pstats("pew"))("relspeed") Then
+        If Pews(pstats("pew"))("fullreload") = True Then
+            reload = False
+            relcount = 0
+            currAmm = Pews(pstats("pew"))("mag")
+        Else
+            relcount = 0
+            currAmm = currAmm + 1
+        End If
     End If
 End If
-
-Call MovePlayer
 
 If fcyc < Pews(pstats("pew"))("rof") Then
     fcyc = fcyc + 0.1
 End If
 
-If currAmm = 0 Then firing = False
-
-If firing = True Then
+If firing = True And currAmm > 0 Then
     If fcyc >= Pews(pstats("pew"))("rof") Then
         fcyc = 0
         currAmm = currAmm - 1
         For i = 1 To Pews(pstats("pew"))("proj")
             Call ShootGun
+            If Pews(pstats("pew"))("fullreload") = False Then
+                reload = False
+                relcount = 0
+            End If
         Next
     End If
     If Pews(pstats("pew"))("auto") = False Then firing = False
+Else
+    firing = False
 End If
 
-If zColl.Count > 0 Then
-    For Each zkey In zColl.Keys
-        Call MoveZed(zkey)
-    Next
+If zColl.count > 0 Then
+    If powBar.width > 0 And powBar.Tag = "freeze" Then
+    'nothing
+    Else
+        For Each zkey In zColl.Keys
+            Call CheckZed(zkey)
+        Next
+    End If
 End If
 
-If bColl.Count > 0 Then
+If bColl.count > 0 Then
     For Each dkey In bColl.Keys
         Call MoveBullet(dkey)
     Next
 End If
 
-If bColl.Count > 0 Then
-    For Each dkey In bColl.Keys
-        Call BulletColl(dkey)
+If iColl.count > 0 Then
+    For Each ikey In iColl.Keys
+        Call ItemCheck(ikey)
     Next
 End If
 
-healthBar.Width = pstats("hp")
-Frame.Pewlbl.Caption = pstats("pew")
-Frame.Ammlbl.Caption = currAmm
-Frame.Rellbl.Caption = relcount
+Call MovePlayer
+
+healthBar.width = pstats("hp")
+relBar.width = relcount / Pews(pstats("pew"))("relspeed") * 100
+Pewlbl.Caption = pstats("pew")
+Ammlbl.Caption = currAmm
+ZC.Caption = zColl.count
 
 spawn = spawn + 0.1
 
-If spawnmax <= spawn Then
+If spawnmax <= spawn And zColl.count < 50 Then
     spawn = 0
+    spawnmax = spawnmax / 1.01
     Call Spawner
 End If
 
@@ -240,64 +338,80 @@ Randomize
 whatto = zeds - Int((zeds + 1) * Rnd)
 
 Select Case whatto
-    Case 0 To 15
-        Call NewZed(2, 5, 1, 10, 20, 250, 20)
-    Case 16 To 40
-        Call NewZed(4, 5, 2, 10, 20, 200, 20)
-    Case 41 To 100
-        Call NewZed(6, 5, 2, 20, 20, 150, 20)
+    Case 0 To 20
+        Call NewZed(1, 5, 4, 10, 20, 250, 20, 140, 10) 'generic trash - slow, weak, wanders around
+    Case 21 To 28
+        Call NewZed(10, 3, 3, 5, 20, 150, 20, 15, 10) 'speedsters start appearing - fast, direct, but weak
+    Case 29 To 40
+        Call NewZed(1, 5, 4, 10, 20, 250, 20, 140, 10) 'generic trash again - for padding
+    Case 41 To 47
+        Call NewZed(8, 3, 4, 5, 20, 150, 20, 20, 10) 'speedster 2 - fast, direct, bit tougher but bit slower as well
+    Case 48 To 50
+        Call NewZed(2, 10, 30, 20, 20, 50, 20, 5, 40) 'the miniboss - strong, direct but slow as shit
+    Case 51 To 100
+        Call NewZed(2, 5, 4, 15, 20, 200, 20, 100, 10) 'stronger trash - like trash but hits harder
+    Case 101 To 105
+        Call NewZed(4, 10, 50, 25, 20, 50, 20, 5, 40) 'the boss - like the miniboss but worse
     Case Else
-        Call NewZed(6, 5, 2, 20, 20, 150, 20)
+        Call NewZed(8, 3, 7, 10, 20, 150, 20, 10, 5) 'speedster 3: preparte to get rekt
 End Select
-
-'spawnmax = spawnmax / 1.01
 
 End Sub
 
-Sub NewZed(zSp, bmax, hp, dam, r, g, b)
+Sub NewZed(zSp, bmax, hp, dam, r, g, b, rangle, sight)
 
 Dim zVars As New Scripting.Dictionary
 
+Dim cDir()
+
 zeds = zeds + 1
+
+Randomize
+wfrom = Int(4 * Rnd + 1)
+
+Select Case wfrom
+    Case 1 'arrive from up
+        Randomize
+        xPos = Int((Frame1.width + 21) * Rnd - 10)
+        yPos = -10
+    Case 2 'arrive from down
+        Randomize
+        xPos = Int((Frame1.width + 21) * Rnd - 10)
+        yPos = Frame1.height + 10
+    Case 3 'arrive from left
+        xPos = -10
+        Randomize
+        yPos = Int((Frame1.height + 21) * Rnd - 10)
+    Case 4 'arrive from right
+        xPos = Frame1.width + 10
+        Randomize
+        yPos = Int((Frame1.height + 21) * Rnd - 10)
+End Select
+
+Set zixl = Frame1.Controls.Add("Forms.Image.1", "Zed" & zeds)
+
+With zixl
+.width = 10
+.height = 10
+.left = xPos
+.top = yPos
+.BackColor = RGB(r, g, b)
+.Tag = zSp
+.Enabled = False
+End With
+
+cDir = CalcDir(zixl.left, zixl.top, player.left, player.top, 0)
 
 zVars.Add "bcount", 0
 zVars.Add "bmax", bmax
 zVars.Add "hp", hp
 zVars.Add "dam", dam
-
-Randomize
-wfrom = Int(4 * Rnd)
-
-Select Case wfrom
-    Case 1 'arrive from up
-        Randomize
-        xPos = Int(Panel.Width + 21 * Rnd - 10)
-        yPos = -10
-    Case 2 'arrive from down
-        Randomize
-        xPos = Int(Panel.Width + 21 * Rnd - 10)
-        yPos = Panel.Height + 10
-    Case 3 'arrive from left
-        xPos = -10
-        Randomize
-        yPos = Int(Panel.Height + 21 * Rnd - 10)
-    Case 4 'arrive from right
-        xPos = Panel.Width + 10
-        Randomize
-        yPos = Int(Panel.Height + 21 * Rnd - 10)
-End Select
-
-Set zixl = Panel.Controls.Add("Forms.Image.1", "Zed" & zeds)
-
-With zixl
-.Width = 10
-.Height = 10
-.Left = xPos
-.Top = yPos
-.BackColor = RGB(r, g, b)
-.Tag = zSp
-.Enabled = False
-End With
+zVars.Add "rangle", rangle
+zVars.Add "sight", sight
+zVars.Add "rdir", 0
+zVars.Add "xdir", cDir(0)
+zVars.Add "ydir", cDir(1)
+zVars.Add "hurtc", False
 
 zColl.Add zeds, zixl
 zStat.Add zeds, zVars
@@ -314,28 +428,81 @@ Else
     tempSpeed = speed
 End If
 
-If upk = 1 And player.Top > 2 Then player.Top = player.Top - tempSpeed
-If leftk = 1 And player.Left > 2 Then player.Left = player.Left - tempSpeed
-If downk = 1 And player.Top < Panel.Height - 12 Then player.Top = player.Top + tempSpeed
-If rightk = 1 And player.Left < Panel.Width - 12 Then player.Left = player.Left + tempSpeed
+If upk = 1 And player.top > 2 Then player.top = player.top - tempSpeed
+If leftk = 1 And player.left > 2 Then player.left = player.left - tempSpeed
+If downk = 1 And player.top < Frame1.height - 12 Then player.top = player.top + tempSpeed
+If rightk = 1 And player.left < Frame1.width - 12 Then player.left = player.left + tempSpeed
 
 End Sub
 
-Sub MoveZed(n)
+Sub CheckZed(n)
 
 Dim cDir()
 
-cDir = CalcDir(zColl(n).Left, zColl(n).Top, player.Left, player.Top, 0)
+Dim pQuad As Integer 'format: xy
+Dim zQuad As Integer 'format: xy
+
+If zStat(n)("hurtc") = True Then
+    HEXcolor = RIGHT("000000" & Hex(zColl(n).BackColor), 6)
+    red = CInt("&H" & RIGHT(HEXcolor, 2))
+    green = CInt("&H" & Mid(HEXcolor, 3, 2))
+    blue = CInt("&H" & left(HEXcolor, 2))
+    
+    red = red - 10
+    zColl(n).BackColor = RGB(red, green, blue)
+        
+    If red <= 20 Then
+        zStat(n)("hurtc") = False
+    End If
+End If
+
+'decide which area the player is in
+pQuad = FindQuad(player.left, player.top)
+
+'decide which area the zed is in
+zQuad = FindQuad(zColl(n).left, zColl(n).top)
+
+'make them wander, but go for it if close enough
+detectRad = zStat(n)("sight") * zColl(n).width
+Randomize
+
+If RectOverlap(zColl(n).left - detectRad, zColl(n).top - detectRad, zColl(n).left + zColl(n).width + detectRad, zColl(n).top + zColl(n).height + detectRad, player.left, player.top, player.left + player.width, player.top + player.height) Then
+    cDir = CalcDir(zColl(n).left, zColl(n).top, player.left, player.top, 0)
+    zStat(n)("xdir") = cDir(0)
+    zStat(n)("ydir") = cDir(1)
+ElseIf Int((101 * Rnd)) < 3 Then
+    zStat(n)("rdir") = Int((2 * zStat(n)("rangle") + 1) * Rnd - zStat(n)("rangle")) * WorksheetFunction.Pi / 180
+    cDir = CalcDir(zColl(n).left, zColl(n).top, player.left, player.top, zStat(n)("rdir"))
+    zStat(n)("xdir") = cDir(0)
+    zStat(n)("ydir") = cDir(1)
+End If
 
 zStat(n)("bcount") = zStat(n)("bcount") + 0.1
 
-If zColl(n).Top >= player.Top - 10 And zColl(n).Top + 10 <= player.Top + 20 And zColl(n).Left >= player.Left - 10 And zColl(n).Left + 10 <= player.Left + 20 Then
-    Call ZBit(n)
-    Exit Sub
+If powBar.width > 0 And powBar.Tag = "invul" Then
+    If RectOverlap(zColl(n).left, zColl(n).top, zColl(n).left + zColl(n).width, zColl(n).top + zColl(n).height, player.left, player.top, player.left + player.width, player.top + player.height) Then
+        Exit Sub
+    End If
 Else
-    zColl(n).Left = zColl(n).Left + (cDir(0) / 4 * zColl(n).Tag)
-    zColl(n).Top = zColl(n).Top + (cDir(1) / 4 * zColl(n).Tag)
+    If pQuad = zQuad Then
+        If RectOverlap(zColl(n).left - 3, zColl(n).top - 3, zColl(n).left + zColl(n).width + 3, zColl(n).top + zColl(n).height + 3, player.left, player.top, player.left + player.width, player.top + player.height) Then
+            Call ZBit(n)
+            If RectOverlap(zColl(n).left, zColl(n).top, zColl(n).left + zColl(n).width, zColl(n).top + zColl(n).height, player.left, player.top, player.left + player.width, player.top + player.height) Then
+                Exit Sub
+            End If
+        End If
+    End If
 End If
+
+    'make them stay in the area
+    If zColl(n).left + (zStat(n)("xdir") * zColl(n).Tag / 4) < 0 Then zStat(n)("xdir") = Abs(zStat(n)("xdir"))
+    If zColl(n).left + zColl(n).width + (zStat(n)("xdir") * zColl(n).Tag / 4) > Frame1.width Then zStat(n)("xdir") = Abs(zStat(n)("xdir")) * -1
+
+    If zColl(n).top + (zStat(n)("ydir") * zColl(n).Tag / 4) < 0 Then zStat(n)("ydir") = Abs(zStat(n)("ydir"))
+    If zColl(n).top + zColl(n).height + (zStat(n)("ydir") * zColl(n).Tag / 4) > Frame1.height Then zStat(n)("ydir") = Abs(zStat(n)("ydir")) * -1
+    'make them move
+    zColl(n).left = zColl(n).left + (zStat(n)("xdir") * zColl(n).Tag / 4)
+    zColl(n).top = zColl(n).top + (zStat(n)("ydir") * zColl(n).Tag / 4)
 
 End Sub
 
@@ -344,14 +511,31 @@ Sub ZBit(n)
 If zStat(n)("bcount") >= zStat(n)("bmax") Then
     zStat(n)("bcount") = 0
     pstats("hp") = pstats("hp") - zStat(n)("dam")
+    If pstats("hp") < 0 Then pstats("hp") = 0
 End If
 
 End Sub
 
 Sub RemoveZed(n)
 
-Frame.PtsDisp.Caption = Pts
-Panel.Controls.Remove zColl.Item(n).Name
+Pts = Pts + 1
+Ptslbl.Caption = Pts
+
+Randomize
+
+If Int((101 * Rnd)) < powchance And iColl.count = 0 Then
+    Call PlacePow(zColl(n).left, zColl(n).top)
+End If
+
+If iColl.count = 0 Then
+    If pstats("pew") = "pistol" And Int((101 * Rnd)) < 50 Then
+        Call PlaceWpn(zColl(n).left, zColl(n).top)
+    ElseIf Int((101 * Rnd)) < wpnchance Then
+        Call PlaceWpn(zColl(n).left, zColl(n).top)
+    End If
+End If
+
+Frame1.Controls.Remove zColl.Item(n).name
 zColl.Remove n
 zStat.Remove n
 
@@ -364,21 +548,36 @@ Dim cDir()
 Randomize
 spread = Int((2 * Pews(pstats("pew"))("spread") + 1) * Rnd - Pews(pstats("pew"))("spread")) * WorksheetFunction.Pi / 180
 
-cDir = CalcDir(player.Left + 5, player.Top + 5, firx, firy, spread)
+cDir = CalcDir(player.left + 5, player.top + 5, firx, firy, spread)
 
 shots = shots + 1
 
-Set blt = Panel.Controls.Add("Forms.Image.1", "Boolit" & shots)
+Set blt = Frame1.Controls.Add("Forms.Image.1", "Boolit" & shots)
 
 With blt
-.Width = Pews(pstats("pew"))("dam") + 1
-.Height = Pews(pstats("pew"))("dam") + 1
-.Left = player.Left + 5
-.Top = player.Top + 5
+.width = Pews(pstats("pew"))("bsize")
+.height = Pews(pstats("pew"))("bsize")
+.left = player.left + 5
+.top = player.top + 5
 .BackColor = RGB(0, 0, 0)
-.Tag = cDir(0)
-.ControlTipText = cDir(1)
+.Tag = cDir(0) & ";" & cDir(1) 'format: xdir;ydir
+.ControlTipText = Pews(pstats("pew"))("pspeed") & ";" & Pews(pstats("pew"))("dam") 'format: speed;damage
 End With
+
+If Pews(pstats("pew"))("piercing") = False Then blt.BorderStyle = 0
+
+If powBar.width > 0 And powBar.Tag = "supershot" Then
+    With blt
+        .width = 4
+        .height = 4
+        .BackColor = RGB(200, 200, 0)
+        .BorderStyle = 1
+        .BorderColor = RGB(0, 0, 0)
+        .ControlTipText = Pews(pstats("pew"))("pspeed") & ";" & "5" 'format: speed;damage
+    End With
+End If
+
+
 
 bColl.Add shots, blt
 
@@ -386,36 +585,195 @@ End Sub
 
 Sub MoveBullet(n)
 
-bColl(n).Left = bColl(n).Left + (bColl(n).Tag * 8)
-bColl(n).Top = bColl(n).Top + (bColl(n).ControlTipText * 8)
+xNew = left(bColl(n).Tag, InStr(bColl(n).Tag, ";") - 1) * left(bColl(n).ControlTipText, InStr(bColl(n).ControlTipText, ";") - 1)
+yNew = Mid(bColl(n).Tag, InStr(bColl(n).Tag, ";") + 1) * left(bColl(n).ControlTipText, InStr(bColl(n).ControlTipText, ";") - 1)
+
+Dim bQuad As Integer 'format: xy
+Dim toQuad As Integer 'same, but for the destination
+Dim zedList As New Collection 'the lists of zeds to check for
+Dim iters As Integer 'how many iterations per tick
+
+iters = 2
+
+'decide which area the blt and the destination is in
+bQuad = FindQuad(bColl(n).left, bColl(n).top)
+toQuad = FindQuad(bColl(n).left + iters * xNew, bColl(n).top + iters * xNew)
+
+'get which Zeds are in that quad
+For Each zkey In zColl.Keys
+    If FindQuad(zColl(zkey).left, zColl(zkey).top) = bQuad Then
+        zedList.Add zkey
+    End If
     
-End Sub
+    If toQuad <> bQuad Then 'only check for destination if it differs from the blt
+        If FindQuad(zColl(zkey).left, zColl(zkey).top) = toQuad Then
+            zedList.Add zkey
+        End If
+    End If
+Next
 
-Sub BulletColl(n)
+If zedList.count > 0 Then
 
-If zColl.Count > 0 Then
-    For Each zkey In zColl.Keys
-        If zColl(zkey).Top < bColl(n).Top + bColl(n).Height And zColl(zkey).Top + 10 > bColl(n).Top And zColl(zkey).Left < bColl(n).Left + bColl(n).Width And zColl(zkey).Left + 10 > bColl(n).Left Then
-            zStat(zkey)("hp") = zStat(zkey)("hp") - Pews(pstats("pew"))("dam")
-            Call RemoveBult(n)
-            If zStat(zkey)("hp") <= 0 Then
-                Call RemoveZed(zkey)
+i = 0
+Do
+
+i = i + 1
+    For k = 1 To zedList.count
+        If IntersectRect(bColl(n).left + bColl(n).width / 2 + (i - 1) * xNew, bColl(n).top + bColl(n).height / 2 + (i - 1) * yNew, bColl(n).left + bColl(n).width / 2 + i * xNew, bColl(n).top + bColl(n).height / 2 + i * yNew, zColl(zedList(k)).left, zColl(zedList(k)).top, zColl(zedList(k)).left + zColl(zedList(k)).width, zColl(zedList(k)).top + zColl(zedList(k)).height) = True Then
+            zStat(zedList(k))("hp") = zStat(zedList(k))("hp") - Mid(bColl(n).ControlTipText, InStr(bColl(n).ControlTipText, ";") + 1)
+            
+            If bColl(n).BorderStyle = 0 Then Call RemoveBult(n)
+
+            HEXcolor = RIGHT("000000" & Hex(zColl(zedList(k)).BackColor), 6)
+            green = CInt("&H" & Mid(HEXcolor, 3, 2))
+            blue = CInt("&H" & left(HEXcolor, 2))
+
+            zColl(zedList(k)).BackColor = RGB(200, green, blue)
+            zStat(zedList(k))("hurtc") = True
+
+            If zStat(zedList(k))("hp") <= 0 Then
+                Call RemoveZed(zedList(k))
             End If
             Exit Sub
         End If
     Next
+
+Loop Until i = iters
+
+'For i = 1 To zedList.count
+'    zedList.Remove 1
+'Next
+
 End If
 
-If bColl(n).Top > Panel.Height Or bColl(n).Top < 0 Or bColl(n).Left > Panel.Width Or bColl(n).Left < 0 Then
+bColl(n).left = bColl(n).left + iters * xNew
+bColl(n).top = bColl(n).top + iters * yNew
+
+If bColl(n).top > Frame1.height Or bColl(n).top < 0 Or bColl(n).left > Frame1.width Or bColl(n).left < 0 Then
     Call RemoveBult(n)
     Exit Sub
+End If
+    
+End Sub
+
+Sub RemoveBult(b)
+    Frame1.Controls.Remove bColl(b).name
+    bColl.Remove b
+End Sub
+
+Sub PlaceWpn(xIt, yIt)
+
+Randomize
+what = Int((Pews.count - 1) * Rnd + 1)
+
+items = items + 1
+Set itm = Frame1.Controls.Add("Forms.Label.1", "Item" & items)
+
+With itm
+.width = 30
+.height = 12
+.left = xIt
+.top = yIt
+.BackColor = RGB(250, 250, 0)
+.TextAlign = 2
+.SpecialEffect = 1
+.Enabled = False
+.Caption = left(Pews.Keys(what), 5)
+.Tag = Pews.Keys(what)
+.ControlTipText = 0
+End With
+
+itm.ZOrder msoSendToBack
+
+iColl.Add items, itm
+
+End Sub
+
+Sub PlacePow(xIt, yIt)
+
+Randomize
+what = Int(Pwrs.count * Rnd + 1)
+
+items = items + 1
+Set itm = Frame1.Controls.Add("Forms.Label.1", "Item" & items)
+
+With itm
+.width = 10
+.height = 10
+.left = xIt
+.top = yIt
+.BackColor = RGB(0, 200, 250)
+.TextAlign = 2
+.SpecialEffect = 1
+.Enabled = False
+.Caption = "!"
+.Tag = Pwrs(what)
+.ControlTipText = 0
+End With
+
+itm.ZOrder msoSendToBack
+
+iColl.Add items, itm
+
+End Sub
+
+Sub ItemCheck(n)
+
+iColl(n).ControlTipText = iColl(n).ControlTipText + 0.5
+
+If iColl(n).width = 30 Then
+    iColl(n).BackColor = RGB(250, 250, iColl(n).ControlTipText)
+Else
+    iColl(n).BackColor = RGB(iColl(n).ControlTipText, 200, 250)
+End If
+
+If iColl(n).ControlTipText > 245 Then
+    Frame1.Controls.Remove iColl.Item(n).name
+    iColl.Remove n
+    Exit Sub
+End If
+
+If RectOverlap(iColl(n).left, iColl(n).top, iColl(n).left + iColl(n).width, iColl(n).top + iColl(n).height, player.left, player.top, player.left + player.width, player.top + player.height) Then
+    If iColl(n).width = 30 Then
+        pstats("pew") = iColl(n).Tag
+        currAmm = 0
+        relcount = 0
+        Frame1.Controls.Remove iColl.Item(n).name
+        iColl.Remove n
+        Exit Sub
+    ElseIf powBar.width = 0 Then
+        powBar.width = powtime
+        powBar.Tag = iColl(n).Tag
+        If powBar.Tag = "invul" Then player.BackColor = RGB(250, 250, 50)
+        If powBar.Tag = "berserk" Then player.BackColor = RGB(250, 0, 0)
+        Frame1.Controls.Remove iColl.Item(n).name
+        iColl.Remove n
+        Exit Sub
+    End If
 End If
 
 End Sub
 
-Sub RemoveBult(b)
-    Panel.Controls.Remove bColl(b).Name
-    bColl.Remove b
+Sub InitPew(name, dam, bsize, spread, proj, pspeed, auto, rof, mag, relspeed, fullreload, piercing)
+
+Dim pewStats As New Scripting.Dictionary
+
+With pewStats
+.Add "dam", dam
+.Add "bsize", bsize
+.Add "spread", spread
+.Add "proj", proj
+.Add "pspeed", pspeed
+.Add "auto", auto
+.Add "rof", rof
+.Add "mag", mag
+.Add "relspeed", relspeed
+.Add "fullreload", fullreload
+.Add "piercing", piercing
+End With
+
+Pews.Add name, pewStats
+
 End Sub
 
 Function CalcDir(x1, y1, x2, y2, spread)
@@ -453,60 +811,6 @@ CalcDir = retCoor
 
 End Function
 
-Sub InitPews()
-
-Dim pewStats1 As New Scripting.Dictionary
-Dim pewStats2 As New Scripting.Dictionary
-Dim pewStats3 As New Scripting.Dictionary
-Dim pewStats4 As New Scripting.Dictionary
-
-With pewStats1
-.Add "dam", 1
-.Add "spread", 4
-.Add "proj", 1
-.Add "auto", False
-.Add "rof", 2
-.Add "mag", 8
-End With
-
-Pews.Add "pistol", pewStats1
-
-With pewStats2
-.Add "dam", 1
-.Add "spread", 15
-.Add "proj", 8
-.Add "auto", False
-.Add "rof", 4
-.Add "mag", 6
-End With
-
-Pews.Add "shotgun", pewStats2
-
-With pewStats3
-.Add "dam", 1
-.Add "spread", 8
-.Add "proj", 1
-.Add "auto", True
-.Add "rof", 0.5
-.Add "mag", 30
-End With
-
-Pews.Add "smg", pewStats3
-
-With pewStats4
-.Add "dam", 3
-.Add "spread", 2
-.Add "proj", 1
-.Add "auto", True
-.Add "rof", 8
-.Add "mag", 5
-End With
-
-Pews.Add "rifle", pewStats4
-
-
-End Sub
-
 Sub Wait()
 
 tStart = Timer
@@ -516,8 +820,99 @@ Loop
 
 End Sub
 
-Function ArcCos(X)
+Function RectOverlap(x1, y1, x2, y2, a1, b1, a2, b2)
 
-ArcCos = Atn(-X / Sqr(-X * X + 1)) + 2 * Atn(1)
+If x1 > a2 Or a1 > x2 Then
+    RectOverlap = False
+ElseIf y1 > b2 Or b1 > y2 Then
+    RectOverlap = False
+Else
+    RectOverlap = True
+End If
+
+End Function
+
+Function IntersectRect(x1, y1, x2, y2, a1, b1, a2, b2)
+
+'Just use a heavily butchered version of the Cohen–Sutherland algorithm
+
+outCode1 = GetOutCode(x1, y1, a1, b1, a2, b2)
+outCode2 = GetOutCode(x2, y2, a1, b1, a2, b2)
+
+If (outCode1 And outCode2) = 0 Then 'both end of the segment is inside the rectangle or at different segments - intersects
+    IntersectRect = True
+    Exit Function
+Else 'both end of the segment is on the same side of the rectangle - doesnt intersect
+    IntersectRect = False
+    Exit Function
+End If
+
+End Function
+
+Function GetOutCode(x, y, a1, b1, a2, b2)
+
+'codeIn = 0 ' 0000
+'codeLeft = 1 ' 0001
+'codeRight = 2 ' 0010
+'codeBottom = 4 ' 0100
+'codetop = 8 ' 1000
+
+code = 0
+
+If x < a1 Then
+    code = code Or 1
+ElseIf x > a2 Then
+    code = code Or 2
+End If
+
+If y < b1 Then
+    code = code Or 4
+ElseIf y > b2 Then
+    code = code Or 8
+End If
+
+GetOutCode = code
+
+End Function
+
+Function FindQuad(x, y)
+
+Dim retq As Integer
+
+If x < Frame1.width / 2 Then 'x is 1 or 2
+    If x < Frame1.width / 4 Then 'x is 1
+        retq = 10
+    Else 'x is 2
+        retq = 20
+    End If
+Else 'x is 3 or 4
+    If x > Frame1.width / 4 * 3 Then 'x is 4
+        retq = 40
+    Else 'x is 3
+        retq = 30
+    End If
+End If
+
+If y < Frame1.height / 2 Then 'y is 1 or 2
+    If y < Frame1.height / 4 Then 'y is 1
+        retq = retq + 1
+    Else 'y is 2
+        retq = retq + 2
+    End If
+Else 'y is 3 or 4
+    If y > Frame1.height / 4 * 3 Then 'y is 4
+        retq = retq + 4
+    Else 'y is 3
+        retq = retq + 3
+    End If
+End If
+
+FindQuad = retq
+
+End Function
+
+Function ArcCos(x)
+
+ArcCos = Atn(-x / Sqr(-x * x + 1)) + 2 * Atn(1)
 
 End Function
